@@ -21,6 +21,8 @@ import android.util.SparseArray;
 
 import com.google.protobuf.ByteString;
 
+import java.nio.ByteBuffer;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,13 @@ public class ProtoMaker {
         return p.build();
     }
 
+    private static UUID getGuidFromByteArray(byte[] bytes, int offset, int length) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes, offset, length);
+        long high = bb.getLong();
+        long low = bb.getLong();
+        return new UUID(high, low);        
+    }    
+    
     @TargetApi(21)
     static Protos.ScanResult from(BluetoothDevice device, ScanResult scanResult) {
         Protos.ScanResult.Builder p = Protos.ScanResult.newBuilder();
@@ -80,6 +89,30 @@ public class ProtoMaker {
                 byte[] value = entry.getValue();
                 a.putServiceData(key.getUuid().toString(), ByteString.copyFrom(value));
             }
+            
+            /* Service data is broken for 128 bit Service Data records ( 0x21 ). Do it manually. */
+            /* https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile */
+            byte[] ad = scanRecord.getBytes();
+            if ( ad != null ) {
+                int i = 0;
+                while ( i + 2 < ad.length ) {                    
+                    
+                    final int headerLen = 2;
+                    byte len = ad[i];
+                    byte adType = ad[i+1];
+                    
+                    // 128 bit uuid data field.
+                    if ( adType == 0x21 && (i + len + 1) < ad.length ) {
+                        final int uuidLen = 16;
+                        UUID uuid = getGuidFromByteArray( ad, i+headerLen, uuidLen );
+                        ByteString data = ByteString.copyFrom(ad, i+uuidLen+headerLen, len - uuidLen - 1 );                    
+                        a.putServiceData(uuid.toString(), data);
+                    }
+                    
+                    i += len + 1;
+                }
+            }
+            
             // Service UUIDs
             List<ParcelUuid> serviceUuids = scanRecord.getServiceUuids();
             if(serviceUuids != null) {
