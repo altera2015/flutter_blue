@@ -101,9 +101,15 @@ public class ProtoMaker {
                     byte len = ad[i];
                     byte adType = ad[i+1];
                     
+                    // check that we actually have that amount of data.
+                    if ( ad.length < i + len + 1 ) {
+                        break;
+                    }
+                    
+                    final int uuidLen = 16;
                     // 128 bit uuid data field.
-                    if ( adType == 0x21 && (i + len + 1) < ad.length ) {
-                        final int uuidLen = 16;
+                    if ( adType == 0x21 && ( len - 1 ) >= uuidLen ) {
+                        
                         UUID uuid = getGuidFromByteArray( ad, i+headerLen, uuidLen );
                         ByteString data = ByteString.copyFrom(ad, i+uuidLen+headerLen, len - uuidLen - 1 );                    
                         a.putServiceData(uuid.toString(), data);
