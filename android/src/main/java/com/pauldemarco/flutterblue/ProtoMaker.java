@@ -86,8 +86,8 @@ public class ProtoMaker {
             Map<ParcelUuid, byte[]> serviceData = scanRecord.getServiceData();
             for (Map.Entry<ParcelUuid, byte[]> entry : serviceData.entrySet()) {
                 ParcelUuid key = entry.getKey();
-                byte[] value = entry.getValue();
-                a.putServiceData(key.getUuid().toString(), ByteString.copyFrom(value));
+                byte[] value = entry.getValue();                
+                a.putServiceData(key.getUuid().toString(), ByteString.copyFrom(value));                
             }
             
             /* Service data is broken for 128 bit Service Data records ( 0x21 ). Do it manually. */
@@ -112,7 +112,9 @@ public class ProtoMaker {
                         
                         UUID uuid = getGuidFromByteArray( ad, i+headerLen, uuidLen );
                         ByteString data = ByteString.copyFrom(ad, i+uuidLen+headerLen, len - uuidLen - 1 );                    
-                        a.putServiceData(uuid.toString(), data);
+                        if ( !a.containsServiceData(uuid.toString()) ) {
+                            a.putServiceData(uuid.toString(), data);
+                        }
                     }
                     
                     i += len + 1;
